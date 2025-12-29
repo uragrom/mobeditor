@@ -1,0 +1,11 @@
+{
+    "boss_music_generic": {
+        "sounds": [
+            {
+                "name": "mobeditor:boss_music_generic",
+                "stream": true
+            }
+        ],
+        "subtitle": "Boss Music"
+    }
+}
