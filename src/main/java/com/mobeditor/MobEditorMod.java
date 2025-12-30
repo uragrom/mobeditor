@@ -8,6 +8,7 @@ import com.mobeditor.event.EquipmentEffectHandler;
 import com.mobeditor.event.ItemEventHandler;
 import com.mobeditor.event.MobEventHandler;
 import com.mobeditor.loot.CustomLootModifier;
+import com.mobeditor.loot.StructureLootModifier;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -42,6 +43,7 @@ public class MobEditorMod {
 
     static {
         LOOT_MODIFIER_SERIALIZERS.register("custom_mob_loot", CustomLootModifier.CODEC);
+        LOOT_MODIFIER_SERIALIZERS.register("structure_loot", StructureLootModifier.CODEC);
     }
 
     public MobEditorMod() {

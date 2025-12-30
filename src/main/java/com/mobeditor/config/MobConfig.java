@@ -26,6 +26,7 @@ public class MobConfig {
     private static final Path EXPLOSIVE_ITEMS_CONFIG = CONFIG_DIR.resolve("explosive_items.json");
     private static final Path ADVANCEMENTS_CONFIG = CONFIG_DIR.resolve("advancements.json");
     private static final Path CLEAR_LOOT_CONFIG = CONFIG_DIR.resolve("clear_default_loot.json");
+    private static final Path STRUCTURE_LOOT_CONFIG = CONFIG_DIR.resolve("structure_loot.json");
     public static final Path MUSIC_DIR = CONFIG_DIR.resolve("music");
 
     // Карта здоровья мобов: EntityType ID -> Max Health
@@ -57,6 +58,9 @@ public class MobConfig {
 
     // Карта достижений: Advancement ID -> AdvancementEntry
     private Map<String, AdvancementEntry> advancementsMap = new ConcurrentHashMap<>();
+
+    // Карта лута структур: Loot Table ID -> List of LootEntry
+    private Map<String, List<LootEntry>> structureLootMap = new ConcurrentHashMap<>();
 
     public void load() {
         try {
@@ -182,6 +186,18 @@ public class MobConfig {
                 }
             }
 
+            // Загрузка лута структур
+            if (Files.exists(STRUCTURE_LOOT_CONFIG)) {
+                try (Reader reader = Files.newBufferedReader(STRUCTURE_LOOT_CONFIG)) {
+                    Type type = new TypeToken<Map<String, List<LootEntry>>>() {
+                    }.getType();
+                    Map<String, List<LootEntry>> loaded = GSON.fromJson(reader, type);
+                    if (loaded != null) {
+                        structureLootMap.putAll(loaded);
+                    }
+                }
+            }
+
             // Создаём папку для музыки
             Files.createDirectories(MUSIC_DIR);
 
@@ -247,6 +263,11 @@ public class MobConfig {
             // Сохранение списка мобов с отключённым лутом
             try (Writer writer = Files.newBufferedWriter(CLEAR_LOOT_CONFIG)) {
                 GSON.toJson(clearDefaultLootMobs, writer);
+            }
+
+            // Сохранение лута структур
+            try (Writer writer = Files.newBufferedWriter(STRUCTURE_LOOT_CONFIG)) {
+                GSON.toJson(structureLootMap, writer);
             }
 
         } catch (IOException e) {
@@ -1068,5 +1089,36 @@ public class MobConfig {
             }
         }
         return result;
+    }
+
+    // ==================== Лут структур ====================
+
+    public void addStructureLoot(String lootTableId, LootEntry entry) {
+        structureLootMap.computeIfAbsent(lootTableId, k -> new ArrayList<>()).add(entry);
+        save();
+    }
+
+    public void removeStructureLoot(String lootTableId, String itemId) {
+        List<LootEntry> entries = structureLootMap.get(lootTableId);
+        if (entries != null) {
+            entries.removeIf(e -> e.getItemId().equals(itemId));
+            if (entries.isEmpty()) {
+                structureLootMap.remove(lootTableId);
+            }
+            save();
+        }
+    }
+
+    public void clearStructureLoot(String lootTableId) {
+        structureLootMap.remove(lootTableId);
+        save();
+    }
+
+    public List<LootEntry> getStructureLoot(String lootTableId) {
+        return structureLootMap.getOrDefault(lootTableId, Collections.emptyList());
+    }
+
+    public Map<String, List<LootEntry>> getAllStructureLoot() {
+        return new HashMap<>(structureLootMap);
     }
 }

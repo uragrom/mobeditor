@@ -196,6 +196,60 @@ public class MobEditorCommands {
                                                                 .then(Commands.literal("listcleared")
                                                                                 .executes(MobEditorCommands::listClearedLootMobs)))
 
+                                                // ==================== Лут структур ====================
+                                                .then(Commands.literal("structureloot")
+                                                                // /mobeditor structureloot add <loot_table> <item> <min> <max> <chance>
+                                                                .then(Commands.literal("add")
+                                                                                .then(Commands.argument("loot_table",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .then(Commands.argument(
+                                                                                                                "item",
+                                                                                                                ResourceLocationArgument
+                                                                                                                                .id())
+                                                                                                                .suggests(ITEM_SUGGESTIONS)
+                                                                                                                .then(Commands
+                                                                                                                                .argument("minCount",
+                                                                                                                                                IntegerArgumentType
+                                                                                                                                                                .integer(1, 64))
+                                                                                                                                .then(Commands
+                                                                                                                                                .argument("maxCount",
+                                                                                                                                                                IntegerArgumentType
+                                                                                                                                                                                .integer(1, 64))
+                                                                                                                                                .then(Commands
+                                                                                                                                                                .argument("chance",
+                                                                                                                                                                                FloatArgumentType
+                                                                                                                                                                                                .floatArg(0.0f,
+                                                                                                                                                                                                                1.0f))
+                                                                                                                                                                .executes(MobEditorCommands::addStructureLoot)))))))
+
+                                                                // /mobeditor structureloot remove <loot_table> <item>
+                                                                .then(Commands.literal("remove")
+                                                                                .then(Commands.argument("loot_table",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .then(Commands.argument(
+                                                                                                                "item",
+                                                                                                                ResourceLocationArgument
+                                                                                                                                .id())
+                                                                                                                .suggests(ITEM_SUGGESTIONS)
+                                                                                                                .executes(MobEditorCommands::removeStructureLoot))))
+
+                                                                // /mobeditor structureloot clear <loot_table>
+                                                                .then(Commands.literal("clear")
+                                                                                .then(Commands.argument("loot_table",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .executes(MobEditorCommands::clearStructureLoot)))
+
+                                                                // /mobeditor structureloot list [loot_table]
+                                                                .then(Commands.literal("list")
+                                                                                .executes(MobEditorCommands::listAllStructureLoot)
+                                                                                .then(Commands.argument("loot_table",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .executes(MobEditorCommands::listStructureLoot))))
+
                                                 // ==================== Предметы ====================
                                                 .then(Commands.literal("item")
 
@@ -977,6 +1031,118 @@ public class MobEditorCommands {
                         context.getSource().sendSuccess(() -> Component.literal("• ")
                                         .append(Component.literal(mob).withStyle(ChatFormatting.GOLD)), false);
                 }
+
+                return 1;
+        }
+
+        // ==================== Лут структур - Команды ====================
+
+        private static int addStructureLoot(CommandContext<CommandSourceStack> context) {
+                ResourceLocation lootTableId = ResourceLocationArgument.getId(context, "loot_table");
+                ResourceLocation itemId = ResourceLocationArgument.getId(context, "item");
+                int minCount = IntegerArgumentType.getInteger(context, "minCount");
+                int maxCount = IntegerArgumentType.getInteger(context, "maxCount");
+                float chance = FloatArgumentType.getFloat(context, "chance");
+
+                if (!BuiltInRegistries.ITEM.containsKey(itemId)) {
+                        context.getSource().sendFailure(Component.literal("Предмет не найден: " + itemId));
+                        return 0;
+                }
+
+                if (minCount > maxCount) {
+                        context.getSource().sendFailure(Component.literal("minCount не может быть больше maxCount"));
+                        return 0;
+                }
+
+                MobConfig.LootEntry entry = new MobConfig.LootEntry(itemId.toString(), minCount, maxCount, chance);
+                MobEditorMod.getConfig().addStructureLoot(lootTableId.toString(), entry);
+
+                context.getSource().sendSuccess(() -> Component.literal("Добавлен лут для структуры ")
+                                .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(": ")
+                                .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW))
+                                .append(String.format(" x%d-%d (%.0f%%)", minCount, maxCount, chance * 100)), true);
+
+                return 1;
+        }
+
+        private static int removeStructureLoot(CommandContext<CommandSourceStack> context) {
+                ResourceLocation lootTableId = ResourceLocationArgument.getId(context, "loot_table");
+                ResourceLocation itemId = ResourceLocationArgument.getId(context, "item");
+
+                MobEditorMod.getConfig().removeStructureLoot(lootTableId.toString(), itemId.toString());
+
+                context.getSource().sendSuccess(() -> Component.literal("Удалён лут ")
+                                .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW))
+                                .append(" для структуры ")
+                                .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD)), true);
+
+                return 1;
+        }
+
+        private static int clearStructureLoot(CommandContext<CommandSourceStack> context) {
+                ResourceLocation lootTableId = ResourceLocationArgument.getId(context, "loot_table");
+
+                MobEditorMod.getConfig().clearStructureLoot(lootTableId.toString());
+
+                context.getSource().sendSuccess(() -> Component.literal("Весь кастомный лут для структуры ")
+                                .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" удалён"), true);
+
+                return 1;
+        }
+
+        private static int listStructureLoot(CommandContext<CommandSourceStack> context) {
+                ResourceLocation lootTableId = ResourceLocationArgument.getId(context, "loot_table");
+                List<MobConfig.LootEntry> lootList = MobEditorMod.getConfig().getStructureLoot(lootTableId.toString());
+
+                if (lootList.isEmpty()) {
+                        context.getSource().sendSuccess(() -> Component.literal("Нет кастомного лута для структуры ")
+                                        .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD)),
+                                        false);
+                        return 0;
+                }
+
+                context.getSource().sendSuccess(() -> Component.literal("=== Лут для структуры " + lootTableId + " ===")
+                                .withStyle(ChatFormatting.AQUA), false);
+
+                for (MobConfig.LootEntry entry : lootList) {
+                        context.getSource().sendSuccess(() -> Component.literal("• ")
+                                        .append(Component.literal(entry.getItemId()).withStyle(ChatFormatting.YELLOW))
+                                        .append(String.format(" x%d-%d (%.0f%%)",
+                                                        entry.getMinCount(), entry.getMaxCount(),
+                                                        entry.getChance() * 100)),
+                                        false);
+                }
+
+                return 1;
+        }
+
+        private static int listAllStructureLoot(CommandContext<CommandSourceStack> context) {
+                Map<String, List<MobConfig.LootEntry>> lootMap = MobEditorMod.getConfig().getAllStructureLoot();
+
+                if (lootMap.isEmpty()) {
+                        context.getSource().sendSuccess(() -> Component.literal("Нет настроек кастомного лута структур")
+                                        .withStyle(ChatFormatting.YELLOW), false);
+                        return 0;
+                }
+
+                context.getSource().sendSuccess(() -> Component.literal("=== Все настройки лута структур ===")
+                                .withStyle(ChatFormatting.AQUA), false);
+
+                lootMap.forEach((lootTable, entries) -> {
+                        context.getSource().sendSuccess(() -> Component.literal(lootTable + ":")
+                                        .withStyle(ChatFormatting.GOLD), false);
+                        for (MobConfig.LootEntry entry : entries) {
+                                context.getSource().sendSuccess(() -> Component.literal("  • ")
+                                                .append(Component.literal(entry.getItemId())
+                                                                .withStyle(ChatFormatting.YELLOW))
+                                                .append(String.format(" x%d-%d (%.0f%%)",
+                                                                entry.getMinCount(), entry.getMaxCount(),
+                                                                entry.getChance() * 100)),
+                                                false);
+                        }
+                });
 
                 return 1;
         }

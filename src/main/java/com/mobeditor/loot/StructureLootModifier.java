@@ -8,12 +8,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraftforge.common.loot.IGlobalLootModifier;
 import net.minecraftforge.common.loot.LootModifier;
@@ -23,35 +20,29 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
 
-public class CustomLootModifier extends LootModifier {
+public class StructureLootModifier extends LootModifier {
 
     private static final Random RANDOM = new Random();
 
-    public static final Supplier<Codec<CustomLootModifier>> CODEC = Suppliers
-            .memoize(() -> RecordCodecBuilder.create(inst -> codecStart(inst).apply(inst, CustomLootModifier::new)));
+    public static final Supplier<Codec<StructureLootModifier>> CODEC = Suppliers
+            .memoize(() -> RecordCodecBuilder.create(inst -> codecStart(inst).apply(inst, StructureLootModifier::new)));
 
-    public CustomLootModifier(LootItemCondition[] conditionsIn) {
+    public StructureLootModifier(LootItemCondition[] conditionsIn) {
         super(conditionsIn);
     }
 
     @Override
     protected @NotNull ObjectArrayList<ItemStack> doApply(ObjectArrayList<ItemStack> generatedLoot,
             LootContext context) {
-        // Получаем убитую сущность
-        Entity entity = context.getParamOrNull(LootContextParams.THIS_ENTITY);
-
-        if (entity == null || !(entity instanceof LivingEntity)) {
+        // Получаем ID таблицы лута
+        ResourceLocation lootTableId = context.getQueriedLootTableId();
+        
+        if (lootTableId == null) {
             return generatedLoot;
         }
 
-        ResourceLocation entityId = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
-        
-        // Очищаем стандартный лут, если настроено
-        if (MobEditorMod.getConfig().shouldClearDefaultLoot(entityId.toString())) {
-            generatedLoot.clear();
-        }
-        
-        List<MobConfig.LootEntry> customLoot = MobEditorMod.getConfig().getLoot(entityId.toString());
+        // Получаем кастомный лут для этой таблицы лута
+        List<MobConfig.LootEntry> customLoot = MobEditorMod.getConfig().getStructureLoot(lootTableId.toString());
 
         for (MobConfig.LootEntry lootEntry : customLoot) {
             // Проверяем шанс
@@ -84,3 +75,4 @@ public class CustomLootModifier extends LootModifier {
         return CODEC.get();
     }
 }
+
