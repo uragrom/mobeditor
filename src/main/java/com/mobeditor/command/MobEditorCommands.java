@@ -40,6 +40,35 @@ public class MobEditorCommands {
                                 builder);
         };
 
+        private static final SuggestionProvider<CommandSourceStack> LOOT_TABLE_SUGGESTIONS = (context, builder) -> {
+                try {
+                        // Используем серверный реестр для получения таблиц лута
+                        var lootData = context.getSource().getServer().getLootData();
+                        var lootTables = lootData.getKeys(net.minecraft.world.level.storage.loot.LootDataType.TABLE);
+                        return SharedSuggestionProvider.suggestResource(lootTables.stream(), builder);
+                } catch (Exception e) {
+                        // Fallback: предлагаем популярные таблицы лута сундуков
+                        List<String> commonLootTables = Arrays.asList(
+                                        "minecraft:chests/simple_dungeon",
+                                        "minecraft:chests/abandoned_mineshaft",
+                                        "minecraft:chests/buried_treasure",
+                                        "minecraft:chests/desert_pyramid",
+                                        "minecraft:chests/end_city_treasure",
+                                        "minecraft:chests/jungle_temple",
+                                        "minecraft:chests/nether_bridge",
+                                        "minecraft:chests/pillager_outpost",
+                                        "minecraft:chests/shipwreck_treasure",
+                                        "minecraft:chests/spawn_bonus_chest",
+                                        "minecraft:chests/stronghold_corridor",
+                                        "minecraft:chests/underwater_ruin_big",
+                                        "minecraft:chests/village/village_armorer",
+                                        "minecraft:chests/village/village_toolsmith",
+                                        "minecraft:chests/woodland_mansion"
+                        );
+                        return SharedSuggestionProvider.suggest(commonLootTables.stream(), builder);
+                }
+        };
+
         public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
                 dispatcher.register(
                                 Commands.literal("mobeditor")
@@ -203,6 +232,7 @@ public class MobEditorCommands {
                                                                                 .then(Commands.argument("loot_table",
                                                                                                 ResourceLocationArgument
                                                                                                                 .id())
+                                                                                                .suggests(LOOT_TABLE_SUGGESTIONS)
                                                                                                 .then(Commands.argument(
                                                                                                                 "item",
                                                                                                                 ResourceLocationArgument
@@ -228,6 +258,7 @@ public class MobEditorCommands {
                                                                                 .then(Commands.argument("loot_table",
                                                                                                 ResourceLocationArgument
                                                                                                                 .id())
+                                                                                                .suggests(LOOT_TABLE_SUGGESTIONS)
                                                                                                 .then(Commands.argument(
                                                                                                                 "item",
                                                                                                                 ResourceLocationArgument
@@ -240,6 +271,7 @@ public class MobEditorCommands {
                                                                                 .then(Commands.argument("loot_table",
                                                                                                 ResourceLocationArgument
                                                                                                                 .id())
+                                                                                                .suggests(LOOT_TABLE_SUGGESTIONS)
                                                                                                 .executes(MobEditorCommands::clearStructureLoot)))
 
                                                                 // /mobeditor structureloot list [loot_table]
@@ -248,6 +280,7 @@ public class MobEditorCommands {
                                                                                 .then(Commands.argument("loot_table",
                                                                                                 ResourceLocationArgument
                                                                                                                 .id())
+                                                                                                .suggests(LOOT_TABLE_SUGGESTIONS)
                                                                                                 .executes(MobEditorCommands::listStructureLoot))))
 
                                                 // ==================== Предметы ====================

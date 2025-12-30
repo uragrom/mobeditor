@@ -7,6 +7,7 @@ import com.mobeditor.event.BossEventHandler;
 import com.mobeditor.event.EquipmentEffectHandler;
 import com.mobeditor.event.ItemEventHandler;
 import com.mobeditor.event.MobEventHandler;
+import com.mobeditor.event.StructureLootEventHandler;
 import com.mobeditor.loot.CustomLootModifier;
 import com.mobeditor.loot.StructureLootModifier;
 import com.mojang.logging.LogUtils;
@@ -67,6 +68,7 @@ public class MobEditorMod {
         MinecraftForge.EVENT_BUS.register(new BossEventHandler());
         MinecraftForge.EVENT_BUS.register(new EquipmentEffectHandler());
         MinecraftForge.EVENT_BUS.register(ArmorSetEventHandler.class);
+        MinecraftForge.EVENT_BUS.register(new StructureLootEventHandler());
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
