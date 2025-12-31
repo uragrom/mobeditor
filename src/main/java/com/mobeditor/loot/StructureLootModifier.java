@@ -8,12 +8,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraftforge.common.loot.IGlobalLootModifier;
 import net.minecraftforge.common.loot.LootModifier;
@@ -23,35 +20,45 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
 
-public class CustomLootModifier extends LootModifier {
+public class StructureLootModifier extends LootModifier {
 
     private static final Random RANDOM = new Random();
 
-    public static final Supplier<Codec<CustomLootModifier>> CODEC = Suppliers
-            .memoize(() -> RecordCodecBuilder.create(inst -> codecStart(inst).apply(inst, CustomLootModifier::new)));
+    public static final Supplier<Codec<StructureLootModifier>> CODEC = Suppliers
+            .memoize(() -> RecordCodecBuilder.create(inst -> codecStart(inst).apply(inst, StructureLootModifier::new)));
 
-    public CustomLootModifier(LootItemCondition[] conditionsIn) {
+    public StructureLootModifier(LootItemCondition[] conditionsIn) {
         super(conditionsIn);
     }
 
     @Override
     protected @NotNull ObjectArrayList<ItemStack> doApply(ObjectArrayList<ItemStack> generatedLoot,
             LootContext context) {
-        // Получаем убитую сущность
-        Entity entity = context.getParamOrNull(LootContextParams.THIS_ENTITY);
-
-        if (entity == null || !(entity instanceof LivingEntity)) {
+        // Получаем ID таблицы лута
+        ResourceLocation lootTableId = context.getQueriedLootTableId();
+        
+        // Логируем все вызовы для отладки
+        if (lootTableId != null && lootTableId.toString().contains("chest")) {
+            MobEditorMod.LOGGER.debug("StructureLootModifier: Вызван для таблицы лута: {}", lootTableId);
+        }
+        
+        if (lootTableId == null) {
             return generatedLoot;
         }
 
-        ResourceLocation entityId = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
-        
-        // Очищаем стандартный лут, если настроено
-        if (MobEditorMod.getConfig().shouldClearDefaultLoot(entityId.toString())) {
-            generatedLoot.clear();
+        // Проверяем, что конфигурация загружена
+        if (MobEditorMod.getConfig() == null) {
+            MobEditorMod.LOGGER.warn("StructureLootModifier: Конфигурация не загружена!");
+            return generatedLoot;
         }
-        
-        List<MobConfig.LootEntry> customLoot = MobEditorMod.getConfig().getLoot(entityId.toString());
+
+        // Получаем кастомный лут для этой таблицы лута
+        List<MobConfig.LootEntry> customLoot = MobEditorMod.getConfig().getStructureLoot(lootTableId.toString());
+
+        if (!customLoot.isEmpty()) {
+            MobEditorMod.LOGGER.info("StructureLootModifier: Найдено {} записей для таблицы лута: {}", 
+                    customLoot.size(), lootTableId);
+        }
 
         for (MobConfig.LootEntry lootEntry : customLoot) {
             // Проверяем шанс
@@ -62,6 +69,7 @@ public class CustomLootModifier extends LootModifier {
             ResourceLocation itemId = new ResourceLocation(lootEntry.getItemId());
 
             if (!BuiltInRegistries.ITEM.containsKey(itemId)) {
+                MobEditorMod.LOGGER.warn("StructureLootModifier: Предмет не найден: {}", itemId);
                 continue;
             }
 
@@ -73,7 +81,11 @@ public class CustomLootModifier extends LootModifier {
                 count += RANDOM.nextInt(lootEntry.getMaxCount() - lootEntry.getMinCount() + 1);
             }
 
-            generatedLoot.add(new ItemStack(item, count));
+            ItemStack stack = new ItemStack(item, count);
+            generatedLoot.add(stack);
+            
+            MobEditorMod.LOGGER.info("StructureLootModifier: Добавлен предмет {} x{} для таблицы {}", 
+                    itemId, count, lootTableId);
         }
 
         return generatedLoot;
@@ -84,3 +96,4 @@ public class CustomLootModifier extends LootModifier {
         return CODEC.get();
     }
 }
+
