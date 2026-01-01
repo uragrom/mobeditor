@@ -76,6 +76,18 @@ public class MobEditorMod {
         mobConfig = new MobConfig();
         mobConfig.load();
 
+         // Логируем информацию о загруженном луте структур
+        int structureLootCount = mobConfig.getAllStructureLoot().size();
+        if (structureLootCount > 0) {
+            LOGGER.info("Mob Editor: Загружено {} конфигураций лута структур", structureLootCount);
+            for (String lootTableId : mobConfig.getAllStructureLoot().keySet()) {
+                int itemsCount = mobConfig.getStructureLoot(lootTableId).size();
+                LOGGER.info("  - {}: {} предметов", lootTableId, itemsCount);
+            }
+        } else {
+            LOGGER.info("Mob Editor: Конфигурации лута структур не найдены");
+        }
+
         LOGGER.info("Mob Editor мод успешно загружен!");
     }
 

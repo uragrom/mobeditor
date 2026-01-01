@@ -37,29 +37,28 @@ public class StructureLootModifier extends LootModifier {
         // Получаем ID таблицы лута
         ResourceLocation lootTableId = context.getQueriedLootTableId();
         
-        // Логируем все вызовы для отладки
-        if (lootTableId != null && lootTableId.toString().contains("chest")) {
-            MobEditorMod.LOGGER.debug("StructureLootModifier: Вызван для таблицы лута: {}", lootTableId);
-        }
-        
         if (lootTableId == null) {
             return generatedLoot;
         }
 
         // Проверяем, что конфигурация загружена
         if (MobEditorMod.getConfig() == null) {
-            MobEditorMod.LOGGER.warn("StructureLootModifier: Конфигурация не загружена!");
             return generatedLoot;
         }
 
         // Получаем кастомный лут для этой таблицы лута
-        List<MobConfig.LootEntry> customLoot = MobEditorMod.getConfig().getStructureLoot(lootTableId.toString());
+        String lootTableIdString = lootTableId.toString();
+        List<MobConfig.LootEntry> customLoot = MobEditorMod.getConfig().getStructureLoot(lootTableIdString);
 
-        if (!customLoot.isEmpty()) {
-            MobEditorMod.LOGGER.info("StructureLootModifier: Найдено {} записей для таблицы лута: {}", 
-                    customLoot.size(), lootTableId);
+        if (customLoot.isEmpty()) {
+            return generatedLoot;
         }
 
+        // Логируем только если есть кастомный лут
+        MobEditorMod.LOGGER.debug("StructureLootModifier: Применяем лут для таблицы: {} (найдено {} записей)", 
+                lootTableId, customLoot.size());
+
+        int addedItems = 0;
         for (MobConfig.LootEntry lootEntry : customLoot) {
             // Проверяем шанс
             if (RANDOM.nextFloat() > lootEntry.getChance()) {
@@ -83,9 +82,12 @@ public class StructureLootModifier extends LootModifier {
 
             ItemStack stack = new ItemStack(item, count);
             generatedLoot.add(stack);
-            
-            MobEditorMod.LOGGER.info("StructureLootModifier: Добавлен предмет {} x{} для таблицы {}", 
-                    itemId, count, lootTableId);
+            addedItems++;
+        }
+
+        if (addedItems > 0) {
+            MobEditorMod.LOGGER.debug("StructureLootModifier: Добавлено {} предметов для таблицы {}", 
+                    addedItems, lootTableId);
         }
 
         return generatedLoot;
