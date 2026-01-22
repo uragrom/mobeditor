@@ -27,6 +27,9 @@ public class MobConfig {
     private static final Path ADVANCEMENTS_CONFIG = CONFIG_DIR.resolve("advancements.json");
     private static final Path CLEAR_LOOT_CONFIG = CONFIG_DIR.resolve("clear_default_loot.json");
     private static final Path STRUCTURE_LOOT_CONFIG = CONFIG_DIR.resolve("structure_loot.json");
+    private static final Path STRUCTURE_CONFIG = CONFIG_DIR.resolve("structure_settings.json");
+    private static final Path CLEAR_STRUCTURE_LOOT_CONFIG = CONFIG_DIR.resolve("clear_structure_loot.json");
+    private static final Path REMOVE_ITEMS_FROM_LOOT_CONFIG = CONFIG_DIR.resolve("remove_items_from_loot.json");
     public static final Path MUSIC_DIR = CONFIG_DIR.resolve("music");
 
     // Карта здоровья мобов: EntityType ID -> Max Health
@@ -34,6 +37,12 @@ public class MobConfig {
 
     // Список мобов с отключённым стандартным лутом
     private Set<String> clearDefaultLootMobs = ConcurrentHashMap.newKeySet();
+
+    // Список loot tables с отключённым стандартным лутом
+    private Set<String> clearDefaultLootTables = ConcurrentHashMap.newKeySet();
+
+    // Карта удаляемых предметов из loot tables: Loot Table ID -> Set of Item IDs
+    private Map<String, Set<String>> removeItemsFromLootTables = new ConcurrentHashMap<>();
 
     // Карта урона мобов: EntityType ID -> Attack Damage
     private Map<String, Double> mobDamageMap = new ConcurrentHashMap<>();
@@ -61,6 +70,9 @@ public class MobConfig {
 
     // Карта лута структур: Loot Table ID -> List of LootEntry
     private Map<String, List<LootEntry>> structureLootMap = new ConcurrentHashMap<>();
+
+    // Карта настроек структур: Structure ID -> StructureSettings
+    private Map<String, StructureSettings> structureSettingsMap = new ConcurrentHashMap<>();
 
     public void load() {
         try {
@@ -198,6 +210,42 @@ public class MobConfig {
                 }
             }
 
+            // Загрузка списка loot tables с отключённым стандартным лутом
+            if (Files.exists(CLEAR_STRUCTURE_LOOT_CONFIG)) {
+                try (Reader reader = Files.newBufferedReader(CLEAR_STRUCTURE_LOOT_CONFIG)) {
+                    Type type = new TypeToken<Set<String>>() {
+                    }.getType();
+                    Set<String> loaded = GSON.fromJson(reader, type);
+                    if (loaded != null) {
+                        clearDefaultLootTables.addAll(loaded);
+                    }
+                }
+            }
+
+            // Загрузка списка удаляемых предметов из loot tables
+            if (Files.exists(REMOVE_ITEMS_FROM_LOOT_CONFIG)) {
+                try (Reader reader = Files.newBufferedReader(REMOVE_ITEMS_FROM_LOOT_CONFIG)) {
+                    Type type = new TypeToken<Map<String, Set<String>>>() {
+                    }.getType();
+                    Map<String, Set<String>> loaded = GSON.fromJson(reader, type);
+                    if (loaded != null) {
+                        removeItemsFromLootTables.putAll(loaded);
+                    }
+                }
+            }
+
+            // Загрузка настроек структур
+            if (Files.exists(STRUCTURE_CONFIG)) {
+                try (Reader reader = Files.newBufferedReader(STRUCTURE_CONFIG)) {
+                    Type type = new TypeToken<Map<String, StructureSettings>>() {
+                    }.getType();
+                    Map<String, StructureSettings> loaded = GSON.fromJson(reader, type);
+                    if (loaded != null) {
+                        structureSettingsMap.putAll(loaded);
+                    }
+                }
+            }
+
             // Создаём папку для музыки
             Files.createDirectories(MUSIC_DIR);
 
@@ -268,6 +316,21 @@ public class MobConfig {
             // Сохранение лута структур
             try (Writer writer = Files.newBufferedWriter(STRUCTURE_LOOT_CONFIG)) {
                 GSON.toJson(structureLootMap, writer);
+            }
+
+            // Сохранение списка loot tables с отключённым стандартным лутом
+            try (Writer writer = Files.newBufferedWriter(CLEAR_STRUCTURE_LOOT_CONFIG)) {
+                GSON.toJson(clearDefaultLootTables, writer);
+            }
+
+            // Сохранение списка удаляемых предметов из loot tables
+            try (Writer writer = Files.newBufferedWriter(REMOVE_ITEMS_FROM_LOOT_CONFIG)) {
+                GSON.toJson(removeItemsFromLootTables, writer);
+            }
+
+            // Сохранение настроек структур
+            try (Writer writer = Files.newBufferedWriter(STRUCTURE_CONFIG)) {
+                GSON.toJson(structureSettingsMap, writer);
             }
 
         } catch (IOException e) {
@@ -1120,5 +1183,190 @@ public class MobConfig {
 
     public Map<String, List<LootEntry>> getAllStructureLoot() {
         return new HashMap<>(structureLootMap);
+    }
+
+    // ==================== Очистка стандартного лута структур ====================
+
+    public void setClearDefaultLootTable(String lootTableId, boolean clear) {
+        if (clear) {
+            clearDefaultLootTables.add(lootTableId);
+        } else {
+            clearDefaultLootTables.remove(lootTableId);
+        }
+        save();
+    }
+
+    public boolean shouldClearDefaultLootTable(String lootTableId) {
+        return clearDefaultLootTables.contains(lootTableId);
+    }
+
+    public Set<String> getAllClearDefaultLootTables() {
+        return new HashSet<>(clearDefaultLootTables);
+    }
+
+    // ==================== Удаление конкретных предметов из loot tables ====================
+
+    public void addRemoveItemFromLootTable(String lootTableId, String itemId) {
+        removeItemsFromLootTables.computeIfAbsent(lootTableId, k -> ConcurrentHashMap.newKeySet()).add(itemId);
+        save();
+    }
+
+    public void removeItemFromLootTable(String lootTableId, String itemId) {
+        Set<String> items = removeItemsFromLootTables.get(lootTableId);
+        if (items != null) {
+            items.remove(itemId);
+            if (items.isEmpty()) {
+                removeItemsFromLootTables.remove(lootTableId);
+            }
+            save();
+        }
+    }
+
+    public void clearRemoveItemsFromLootTable(String lootTableId) {
+        removeItemsFromLootTables.remove(lootTableId);
+        save();
+    }
+
+    public Set<String> getRemoveItemsFromLootTable(String lootTableId) {
+        return removeItemsFromLootTables.getOrDefault(lootTableId, Collections.emptySet());
+    }
+
+    public boolean shouldRemoveItemFromLootTable(String lootTableId, String itemId) {
+        Set<String> items = removeItemsFromLootTables.get(lootTableId);
+        return items != null && items.contains(itemId);
+    }
+
+    public Map<String, Set<String>> getAllRemoveItemsFromLootTables() {
+        Map<String, Set<String>> result = new HashMap<>();
+        removeItemsFromLootTables.forEach((key, value) -> result.put(key, new HashSet<>(value)));
+        return result;
+    }
+
+    // ==================== Настройки структур ====================
+
+    public void setStructureSettings(String structureId, StructureSettings settings) {
+        structureSettingsMap.put(structureId, settings);
+        save();
+    }
+
+    public StructureSettings getStructureSettings(String structureId) {
+        return structureSettingsMap.get(structureId);
+    }
+
+    public void removeStructureSettings(String structureId) {
+        structureSettingsMap.remove(structureId);
+        save();
+    }
+
+    public Map<String, StructureSettings> getAllStructureSettings() {
+        return new HashMap<>(structureSettingsMap);
+    }
+
+    public boolean isStructureEnabled(String structureId) {
+        StructureSettings settings = structureSettingsMap.get(structureId);
+        return settings == null || settings.isEnabled(); // По умолчанию включена
+    }
+
+    public double getStructureSpawnChance(String structureId) {
+        StructureSettings settings = structureSettingsMap.get(structureId);
+        return settings != null ? settings.getSpawnChance() : 1.0; // По умолчанию 100%
+    }
+
+    // ==================== StructureSettings класс ====================
+
+    public static class StructureSettings {
+        private boolean enabled = true; // Включена ли структура
+        private double spawnChance = 1.0; // Шанс спавна (0.0 - 1.0, где 1.0 = 100%)
+        private int minDistance = 0; // Минимальное расстояние от спавна (в чанках)
+        private int maxDistance = Integer.MAX_VALUE; // Максимальное расстояние от спавна (в чанках)
+        private int separation = -1; // Разделение структур (в чанках, -1 = использовать значение по умолчанию)
+        private int spacing = -1; // Расстояние между структурами (в чанках, -1 = использовать значение по
+                                  // умолчанию)
+        private String salt = null; // Соль для генерации (null = использовать значение по умолчанию)
+
+        public StructureSettings() {
+        }
+
+        public StructureSettings(boolean enabled, double spawnChance) {
+            this.enabled = enabled;
+            this.spawnChance = spawnChance;
+        }
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public double getSpawnChance() {
+            return spawnChance;
+        }
+
+        public void setSpawnChance(double spawnChance) {
+            this.spawnChance = Math.max(0.0, Math.min(1.0, spawnChance));
+        }
+
+        public int getMinDistance() {
+            return minDistance;
+        }
+
+        public void setMinDistance(int minDistance) {
+            this.minDistance = Math.max(0, minDistance);
+        }
+
+        public int getMaxDistance() {
+            return maxDistance;
+        }
+
+        public void setMaxDistance(int maxDistance) {
+            this.maxDistance = maxDistance > 0 ? maxDistance : Integer.MAX_VALUE;
+        }
+
+        public int getSeparation() {
+            return separation;
+        }
+
+        public void setSeparation(int separation) {
+            this.separation = separation;
+        }
+
+        public int getSpacing() {
+            return spacing;
+        }
+
+        public void setSpacing(int spacing) {
+            this.spacing = spacing;
+        }
+
+        public String getSalt() {
+            return salt;
+        }
+
+        public void setSalt(String salt) {
+            this.salt = salt;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("Включена: ").append(enabled ? "Да" : "Нет");
+            sb.append(", Шанс: ").append(String.format("%.1f%%", spawnChance * 100));
+            if (minDistance > 0 || maxDistance < Integer.MAX_VALUE) {
+                sb.append(", Расстояние: ").append(minDistance);
+                if (maxDistance < Integer.MAX_VALUE) {
+                    sb.append("-").append(maxDistance);
+                }
+                sb.append(" чанков");
+            }
+            if (separation > 0) {
+                sb.append(", Разделение: ").append(separation);
+            }
+            if (spacing > 0) {
+                sb.append(", Расстояние между: ").append(spacing);
+            }
+            return sb.toString();
+        }
     }
 }

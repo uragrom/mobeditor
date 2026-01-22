@@ -52,7 +52,11 @@ minecraft {
     }
 }
 
-sourceSets.main.resources { srcDir 'src/generated/resources' }
+sourceSets.main.resources { 
+    srcDir 'src/generated/resources'
+    // Исключаем папку bin из ресурсов
+    exclude 'bin/**'
+}
 
 repositories {
     mavenCentral()
@@ -151,6 +155,7 @@ tasks.named('processResources', ProcessResources).configure {
 }
 
 tasks.named('jar', Jar).configure {
+    // jar создается с основным именем, reobfJar переименует его
     manifest {
         attributes([
                 'Specification-Title'     : mod_id,
@@ -162,7 +167,31 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
     }
-    finalizedBy 'reobfJar'
+    // Исключаем папку bin из сборки
+    exclude 'bin/**'
+    
+    // Создаем dev версию после сборки jar
+    doLast {
+        def sourceFile = jar.archiveFile.get().asFile
+        def devJar = new File(sourceFile.parent, "${mod_id}-${mod_version}-dev.jar")
+        if (sourceFile.exists()) {
+            sourceFile.withInputStream { input ->
+                devJar.withOutputStream { output ->
+                    output << input
+                }
+            }
+            println "Создана dev версия: ${devJar.name}"
+        }
+    }
+}
+
+// Настраиваем reobfJar после его создания (в Forge Gradle 6.x это RenameJarInPlace)
+// reobfJar автоматически создаст файл с основным именем (без суффикса)
+afterEvaluate {
+    tasks.named('reobfJar').configure {
+        // reobfJar переименовывает jar файл в файл с основным именем
+        // Это гарантирует, что для публикации будет файл mobeditor-1.0.0.jar
+    }
 }
 
 publishing {

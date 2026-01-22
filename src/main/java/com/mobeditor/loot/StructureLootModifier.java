@@ -18,6 +18,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.Supplier;
 
 public class StructureLootModifier extends LootModifier {
@@ -46,8 +47,29 @@ public class StructureLootModifier extends LootModifier {
             return generatedLoot;
         }
 
-        // Получаем кастомный лут для этой таблицы лута
         String lootTableIdString = lootTableId.toString();
+
+        // Очищаем стандартный лут, если настроено
+        if (MobEditorMod.getConfig().shouldClearDefaultLootTable(lootTableIdString)) {
+            generatedLoot.clear();
+            MobEditorMod.LOGGER.debug("StructureLootModifier: Очищен стандартный лут для таблицы: {}", lootTableId);
+        } else {
+            // Удаляем конкретные предметы, если настроено
+            Set<String> itemsToRemove = MobEditorMod.getConfig().getRemoveItemsFromLootTable(lootTableIdString);
+            if (!itemsToRemove.isEmpty()) {
+                generatedLoot.removeIf(stack -> {
+                    ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    if (itemId != null && itemsToRemove.contains(itemId.toString())) {
+                        MobEditorMod.LOGGER.debug("StructureLootModifier: Удален предмет {} из таблицы: {}", 
+                                itemId, lootTableId);
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        }
+
+        // Получаем кастомный лут для этой таблицы лута
         List<MobConfig.LootEntry> customLoot = MobEditorMod.getConfig().getStructureLoot(lootTableIdString);
 
         if (customLoot.isEmpty()) {

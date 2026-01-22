@@ -8,6 +8,7 @@ import com.mobeditor.event.EquipmentEffectHandler;
 import com.mobeditor.event.ItemEventHandler;
 import com.mobeditor.event.MobEventHandler;
 import com.mobeditor.event.StructureLootEventHandler;
+import com.mobeditor.event.StructureSpawnEventHandler;
 import com.mobeditor.loot.CustomLootModifier;
 import com.mobeditor.loot.StructureLootModifier;
 import com.mojang.logging.LogUtils;
@@ -25,6 +26,8 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
+
+import java.util.Map;
 
 @Mod(MobEditorMod.MOD_ID)
 public class MobEditorMod {
@@ -69,6 +72,12 @@ public class MobEditorMod {
         MinecraftForge.EVENT_BUS.register(new EquipmentEffectHandler());
         MinecraftForge.EVENT_BUS.register(ArmorSetEventHandler.class);
         MinecraftForge.EVENT_BUS.register(new StructureLootEventHandler());
+        MinecraftForge.EVENT_BUS.register(new StructureSpawnEventHandler());
+
+        // Регистрируем обработчик регистрации структур (самый ранний момент)
+        // ВАЖНО: ServerAboutToStartEvent - это событие Forge Event Bus, а не Mod Event
+        // Bus!
+        MinecraftForge.EVENT_BUS.register(new com.mobeditor.event.StructureRegistryHandler());
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -76,7 +85,7 @@ public class MobEditorMod {
         mobConfig = new MobConfig();
         mobConfig.load();
 
-         // Логируем информацию о загруженном луте структур
+        // Логируем информацию о загруженном луте структур
         int structureLootCount = mobConfig.getAllStructureLoot().size();
         if (structureLootCount > 0) {
             LOGGER.info("Mob Editor: Загружено {} конфигураций лута структур", structureLootCount);
@@ -86,6 +95,24 @@ public class MobEditorMod {
             }
         } else {
             LOGGER.info("Mob Editor: Конфигурации лута структур не найдены");
+        }
+
+        // Логируем информацию о загруженных настройках структур
+        int structureSettingsCount = mobConfig.getAllStructureSettings().size();
+        if (structureSettingsCount > 0) {
+            LOGGER.info("Mob Editor: Загружено {} настроек структур", structureSettingsCount);
+            for (Map.Entry<String, MobConfig.StructureSettings> entry : mobConfig.getAllStructureSettings()
+                    .entrySet()) {
+                MobConfig.StructureSettings settings = entry.getValue();
+                LOGGER.info("  - {}: включена={}, шанс={}%, spacing={}, separation={}",
+                        entry.getKey(),
+                        settings.isEnabled(),
+                        (int) (settings.getSpawnChance() * 100),
+                        settings.getSpacing() > 0 ? settings.getSpacing() : "по умолчанию",
+                        settings.getSeparation() > 0 ? settings.getSeparation() : "по умолчанию");
+            }
+        } else {
+            LOGGER.info("Mob Editor: Настройки структур не найдены");
         }
 
         LOGGER.info("Mob Editor мод успешно загружен!");

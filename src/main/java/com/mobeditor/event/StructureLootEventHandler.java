@@ -34,15 +34,6 @@ public class StructureLootEventHandler {
         
         String lootTableIdString = lootTableId.toString();
         
-        // Проверяем, есть ли кастомный лут для этой таблицы
-        List<MobConfig.LootEntry> customLoot = MobEditorMod.getConfig().getStructureLoot(lootTableIdString);
-
-        if (customLoot == null || customLoot.isEmpty()) {
-            return;
-        }
-
-        MobEditorMod.LOGGER.info("StructureLootEventHandler: Модифицируем таблицу лута: {}", lootTableId);
-
         LootTable originalTable = event.getTable();
 
         try {
@@ -54,8 +45,37 @@ public class StructureLootEventHandler {
                 return;
             }
 
+            // Очищаем стандартный лут, если настроено
+            boolean cleared = false;
+            if (MobEditorMod.getConfig().shouldClearDefaultLootTable(lootTableIdString)) {
+                MobEditorMod.LOGGER.info("StructureLootEventHandler: Очищаем стандартный лут для таблицы: {}", lootTableId);
+                setPoolsInTable(originalTable, new ArrayList<>());
+                cleared = true;
+            }
+
+            // Проверяем, есть ли кастомный лут для этой таблицы
+            List<MobConfig.LootEntry> customLoot = MobEditorMod.getConfig().getStructureLoot(lootTableIdString);
+
+            // Если нет кастомного лута и мы уже очистили стандартный, выходим
+            if ((customLoot == null || customLoot.isEmpty()) && cleared) {
+                return;
+            }
+
+            // Если нет кастомного лута и не было очистки, ничего не делаем
+            if (customLoot == null || customLoot.isEmpty()) {
+                return;
+            }
+
+            MobEditorMod.LOGGER.info("StructureLootEventHandler: Модифицируем таблицу лута: {}", lootTableId);
+
+            // Получаем пулы снова (могли измениться после очистки)
+            List<LootPool> currentPools = getPoolsFromTable(originalTable);
+            if (currentPools == null) {
+                currentPools = new ArrayList<>();
+            }
+
             // Проверяем, не был ли уже добавлен наш пул (избегаем дублирования)
-            boolean hasCustomPool = originalPools.stream()
+            boolean hasCustomPool = currentPools.stream()
                     .anyMatch(pool -> {
                         try {
                             Field nameField = LootPool.class.getDeclaredField("name");
@@ -73,7 +93,7 @@ public class StructureLootEventHandler {
             }
 
             // Создаём новый изменяемый список для пулов
-            List<LootPool> newPools = new ArrayList<>(originalPools);
+            List<LootPool> newPools = new ArrayList<>(currentPools);
 
             // Создаём новый пул для кастомного лута
             LootPool.Builder customPoolBuilder = LootPool.lootPool().name("mobeditor_custom_loot");

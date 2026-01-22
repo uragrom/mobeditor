@@ -63,9 +63,39 @@ public class MobEditorCommands {
                                         "minecraft:chests/underwater_ruin_big",
                                         "minecraft:chests/village/village_armorer",
                                         "minecraft:chests/village/village_toolsmith",
-                                        "minecraft:chests/woodland_mansion"
-                        );
+                                        "minecraft:chests/woodland_mansion");
                         return SharedSuggestionProvider.suggest(commonLootTables.stream(), builder);
+                }
+        };
+
+        private static final SuggestionProvider<CommandSourceStack> STRUCTURE_SUGGESTIONS = (context, builder) -> {
+                try {
+                        return SharedSuggestionProvider.suggestResource(
+                                        net.minecraft.core.registries.BuiltInRegistries.STRUCTURE_TYPE.keySet()
+                                                        .stream(),
+                                        builder);
+                } catch (Exception e) {
+                        // Fallback: популярные структуры
+                        List<String> commonStructures = Arrays.asList(
+                                        "minecraft:bastion_remnant",
+                                        "minecraft:buried_treasure",
+                                        "minecraft:desert_pyramid",
+                                        "minecraft:end_city",
+                                        "minecraft:fortress",
+                                        "minecraft:igloo",
+                                        "minecraft:jungle_pyramid",
+                                        "minecraft:mansion",
+                                        "minecraft:mineshaft",
+                                        "minecraft:monument",
+                                        "minecraft:nether_fossil",
+                                        "minecraft:ocean_ruin",
+                                        "minecraft:pillager_outpost",
+                                        "minecraft:ruined_portal",
+                                        "minecraft:shipwreck",
+                                        "minecraft:stronghold",
+                                        "minecraft:swamp_hut",
+                                        "minecraft:village");
+                        return SharedSuggestionProvider.suggest(commonStructures.stream(), builder);
                 }
         };
 
@@ -227,7 +257,8 @@ public class MobEditorCommands {
 
                                                 // ==================== Лут структур ====================
                                                 .then(Commands.literal("structureloot")
-                                                                // /mobeditor structureloot add <loot_table> <item> <min> <max> <chance>
+                                                                // /mobeditor structureloot add <loot_table> <item>
+                                                                // <min> <max> <chance>
                                                                 .then(Commands.literal("add")
                                                                                 .then(Commands.argument("loot_table",
                                                                                                 ResourceLocationArgument
@@ -281,7 +312,154 @@ public class MobEditorCommands {
                                                                                                 ResourceLocationArgument
                                                                                                                 .id())
                                                                                                 .suggests(LOOT_TABLE_SUGGESTIONS)
-                                                                                                .executes(MobEditorCommands::listStructureLoot))))
+                                                                                                .executes(MobEditorCommands::listStructureLoot)))
+
+                                                                // /mobeditor structureloot cleardefault <loot_table>
+                                                                .then(Commands.literal("cleardefault")
+                                                                                .then(Commands.argument("loot_table",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(LOOT_TABLE_SUGGESTIONS)
+                                                                                                .executes(MobEditorCommands::clearDefaultStructureLoot)))
+
+                                                                // /mobeditor structureloot restoredefault <loot_table>
+                                                                .then(Commands.literal("restoredefault")
+                                                                                .then(Commands.argument("loot_table",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(LOOT_TABLE_SUGGESTIONS)
+                                                                                                .executes(MobEditorCommands::restoreDefaultStructureLoot)))
+
+                                                                // /mobeditor structureloot listcleared
+                                                                .then(Commands.literal("listcleared")
+                                                                                .executes(MobEditorCommands::listClearedStructureLoot))
+
+                                                                // /mobeditor structureloot removeitem <loot_table> <item>
+                                                                .then(Commands.literal("removeitem")
+                                                                                .then(Commands.argument("loot_table",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(LOOT_TABLE_SUGGESTIONS)
+                                                                                                .then(Commands.argument(
+                                                                                                                "item",
+                                                                                                                ResourceLocationArgument
+                                                                                                                                .id())
+                                                                                                                .suggests(ITEM_SUGGESTIONS)
+                                                                                                                .executes(MobEditorCommands::removeItemFromStructureLoot))))
+
+                                                                // /mobeditor structureloot restoreitem <loot_table> <item>
+                                                                .then(Commands.literal("restoreitem")
+                                                                                .then(Commands.argument("loot_table",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(LOOT_TABLE_SUGGESTIONS)
+                                                                                                .then(Commands.argument(
+                                                                                                                "item",
+                                                                                                                ResourceLocationArgument
+                                                                                                                                .id())
+                                                                                                                .suggests(ITEM_SUGGESTIONS)
+                                                                                                                .executes(MobEditorCommands::restoreItemFromStructureLoot))))
+
+                                                                // /mobeditor structureloot listremoved [loot_table]
+                                                                .then(Commands.literal("listremoved")
+                                                                                .executes(MobEditorCommands::listAllRemovedItems)
+                                                                                .then(Commands.argument("loot_table",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(LOOT_TABLE_SUGGESTIONS)
+                                                                                                .executes(MobEditorCommands::listRemovedItems))))
+
+                                                // ==================== Структуры ====================
+                                                .then(Commands.literal("structure")
+                                                                // /mobeditor structure enable <structure>
+                                                                .then(Commands.literal("enable")
+                                                                                .then(Commands.argument("structure",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(STRUCTURE_SUGGESTIONS)
+                                                                                                .executes(MobEditorCommands::enableStructure)))
+
+                                                                // /mobeditor structure disable <structure>
+                                                                .then(Commands.literal("disable")
+                                                                                .then(Commands.argument("structure",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(STRUCTURE_SUGGESTIONS)
+                                                                                                .executes(MobEditorCommands::disableStructure)))
+
+                                                                // /mobeditor structure chance <structure> <chance>
+                                                                .then(Commands.literal("chance")
+                                                                                .then(Commands.argument("structure",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(STRUCTURE_SUGGESTIONS)
+                                                                                                .then(Commands.argument(
+                                                                                                                "chance",
+                                                                                                                DoubleArgumentType
+                                                                                                                                .doubleArg(0.0, 1.0))
+                                                                                                                .executes(MobEditorCommands::setStructureChance))))
+
+                                                                // /mobeditor structure distance <structure> <min> [max]
+                                                                .then(Commands.literal("distance")
+                                                                                .then(Commands.argument("structure",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(STRUCTURE_SUGGESTIONS)
+                                                                                                .then(Commands.argument(
+                                                                                                                "min",
+                                                                                                                IntegerArgumentType
+                                                                                                                                .integer(0))
+                                                                                                                .executes(MobEditorCommands::setStructureMinDistance)
+                                                                                                                .then(Commands.argument(
+                                                                                                                                "max",
+                                                                                                                                IntegerArgumentType
+                                                                                                                                                .integer(0))
+                                                                                                                                .executes(MobEditorCommands::setStructureDistance)))))
+
+                                                                // /mobeditor structure spacing <structure> <spacing>
+                                                                .then(Commands.literal("spacing")
+                                                                                .then(Commands.argument("structure",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(STRUCTURE_SUGGESTIONS)
+                                                                                                .then(Commands.argument(
+                                                                                                                "spacing",
+                                                                                                                IntegerArgumentType
+                                                                                                                                .integer(0))
+                                                                                                                .executes(MobEditorCommands::setStructureSpacing))))
+
+                                                                // /mobeditor structure separation <structure>
+                                                                // <separation>
+                                                                .then(Commands.literal("separation")
+                                                                                .then(Commands.argument("structure",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(STRUCTURE_SUGGESTIONS)
+                                                                                                .then(Commands.argument(
+                                                                                                                "separation",
+                                                                                                                IntegerArgumentType
+                                                                                                                                .integer(0))
+                                                                                                                .executes(MobEditorCommands::setStructureSeparation))))
+
+                                                                // /mobeditor structure get <structure>
+                                                                .then(Commands.literal("get")
+                                                                                .then(Commands.argument("structure",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(STRUCTURE_SUGGESTIONS)
+                                                                                                .executes(MobEditorCommands::getStructureSettings)))
+
+                                                                // /mobeditor structure remove <structure>
+                                                                .then(Commands.literal("remove")
+                                                                                .then(Commands.argument("structure",
+                                                                                                ResourceLocationArgument
+                                                                                                                .id())
+                                                                                                .suggests(STRUCTURE_SUGGESTIONS)
+                                                                                                .executes(MobEditorCommands::removeStructureSettings)))
+
+                                                                // /mobeditor structure list
+                                                                .then(Commands.literal("list")
+                                                                                .executes(MobEditorCommands::listAllStructureSettings)))
 
                                                 // ==================== Предметы ====================
                                                 .then(Commands.literal("item")
@@ -1108,7 +1286,8 @@ public class MobEditorCommands {
                 context.getSource().sendSuccess(() -> Component.literal("Удалён лут ")
                                 .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW))
                                 .append(" для структуры ")
-                                .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD)), true);
+                                .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD)),
+                                true);
 
                 return 1;
         }
@@ -1131,7 +1310,8 @@ public class MobEditorCommands {
 
                 if (lootList.isEmpty()) {
                         context.getSource().sendSuccess(() -> Component.literal("Нет кастомного лута для структуры ")
-                                        .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD)),
+                                        .append(Component.literal(lootTableId.toString())
+                                                        .withStyle(ChatFormatting.GOLD)),
                                         false);
                         return 0;
                 }
@@ -1176,6 +1356,389 @@ public class MobEditorCommands {
                                                 false);
                         }
                 });
+
+                return 1;
+        }
+
+        private static int clearDefaultStructureLoot(CommandContext<CommandSourceStack> context) {
+                ResourceLocation lootTableId = ResourceLocationArgument.getId(context, "loot_table");
+
+                MobEditorMod.getConfig().setClearDefaultLootTable(lootTableId.toString(), true);
+
+                context.getSource().sendSuccess(() -> Component.literal("Стандартный лут для ")
+                                .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" отключён. Теперь будет использоваться только кастомный лут."), true);
+
+                return 1;
+        }
+
+        private static int restoreDefaultStructureLoot(CommandContext<CommandSourceStack> context) {
+                ResourceLocation lootTableId = ResourceLocationArgument.getId(context, "loot_table");
+
+                MobEditorMod.getConfig().setClearDefaultLootTable(lootTableId.toString(), false);
+
+                context.getSource().sendSuccess(() -> Component.literal("Стандартный лут для ")
+                                .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" восстановлен."), true);
+
+                return 1;
+        }
+
+        private static int listClearedStructureLoot(CommandContext<CommandSourceStack> context) {
+                java.util.Set<String> lootTables = MobEditorMod.getConfig().getAllClearDefaultLootTables();
+
+                if (lootTables.isEmpty()) {
+                        context.getSource()
+                                        .sendSuccess(() -> Component
+                                                        .literal("Нет loot tables с отключённым стандартным лутом")
+                                                        .withStyle(ChatFormatting.YELLOW), false);
+                        return 0;
+                }
+
+                context.getSource().sendSuccess(() -> Component.literal("=== Loot tables с отключённым стандартным лутом ===")
+                                .withStyle(ChatFormatting.RED), false);
+
+                for (String lootTable : lootTables) {
+                        context.getSource().sendSuccess(() -> Component.literal("• ")
+                                        .append(Component.literal(lootTable).withStyle(ChatFormatting.GOLD)), false);
+                }
+
+                return 1;
+        }
+
+        private static int removeItemFromStructureLoot(CommandContext<CommandSourceStack> context) {
+                ResourceLocation lootTableId = ResourceLocationArgument.getId(context, "loot_table");
+                ResourceLocation itemId = ResourceLocationArgument.getId(context, "item");
+
+                if (!BuiltInRegistries.ITEM.containsKey(itemId)) {
+                        context.getSource().sendFailure(Component.literal("Предмет не найден: " + itemId));
+                        return 0;
+                }
+
+                MobEditorMod.getConfig().addRemoveItemFromLootTable(lootTableId.toString(), itemId.toString());
+
+                context.getSource().sendSuccess(() -> Component.literal("Предмет ")
+                                .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW))
+                                .append(" будет удалён из лута ")
+                                .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD)), true);
+
+                return 1;
+        }
+
+        private static int restoreItemFromStructureLoot(CommandContext<CommandSourceStack> context) {
+                ResourceLocation lootTableId = ResourceLocationArgument.getId(context, "loot_table");
+                ResourceLocation itemId = ResourceLocationArgument.getId(context, "item");
+
+                MobEditorMod.getConfig().removeItemFromLootTable(lootTableId.toString(), itemId.toString());
+
+                context.getSource().sendSuccess(() -> Component.literal("Предмет ")
+                                .append(Component.literal(itemId.toString()).withStyle(ChatFormatting.YELLOW))
+                                .append(" восстановлен в луте ")
+                                .append(Component.literal(lootTableId.toString()).withStyle(ChatFormatting.GOLD)), true);
+
+                return 1;
+        }
+
+        private static int listRemovedItems(CommandContext<CommandSourceStack> context) {
+                ResourceLocation lootTableId = ResourceLocationArgument.getId(context, "loot_table");
+                java.util.Set<String> items = MobEditorMod.getConfig().getRemoveItemsFromLootTable(lootTableId.toString());
+
+                if (items.isEmpty()) {
+                        context.getSource().sendSuccess(() -> Component.literal("Нет удалённых предметов для loot table ")
+                                        .append(Component.literal(lootTableId.toString())
+                                                        .withStyle(ChatFormatting.GOLD)),
+                                        false);
+                        return 0;
+                }
+
+                context.getSource().sendSuccess(() -> Component.literal("=== Удалённые предметы из " + lootTableId + " ===")
+                                .withStyle(ChatFormatting.AQUA), false);
+
+                for (String item : items) {
+                        context.getSource().sendSuccess(() -> Component.literal("• ")
+                                        .append(Component.literal(item).withStyle(ChatFormatting.YELLOW)), false);
+                }
+
+                return 1;
+        }
+
+        private static int listAllRemovedItems(CommandContext<CommandSourceStack> context) {
+                java.util.Map<String, java.util.Set<String>> removedItemsMap = MobEditorMod.getConfig()
+                                .getAllRemoveItemsFromLootTables();
+
+                if (removedItemsMap.isEmpty()) {
+                        context.getSource().sendSuccess(() -> Component.literal("Нет настроек удаления предметов из loot tables")
+                                        .withStyle(ChatFormatting.YELLOW), false);
+                        return 0;
+                }
+
+                context.getSource().sendSuccess(() -> Component.literal("=== Все удалённые предметы из loot tables ===")
+                                .withStyle(ChatFormatting.AQUA), false);
+
+                removedItemsMap.forEach((lootTable, items) -> {
+                        context.getSource().sendSuccess(() -> Component.literal(lootTable + ":")
+                                        .withStyle(ChatFormatting.GOLD), false);
+                        for (String item : items) {
+                                context.getSource().sendSuccess(() -> Component.literal("  • ")
+                                                .append(Component.literal(item).withStyle(ChatFormatting.YELLOW)), false);
+                        }
+                });
+
+                return 1;
+        }
+
+        // ==================== Структуры - Команды ====================
+
+        private static int enableStructure(CommandContext<CommandSourceStack> context) {
+                ResourceLocation structureId = ResourceLocationArgument.getId(context, "structure");
+                MobConfig.StructureSettings settings = MobEditorMod.getConfig()
+                                .getStructureSettings(structureId.toString());
+
+                if (settings == null) {
+                        settings = new MobConfig.StructureSettings();
+                }
+                settings.setEnabled(true);
+                MobEditorMod.getConfig().setStructureSettings(structureId.toString(), settings);
+
+                context.getSource().sendSuccess(() -> Component.literal("Структура ")
+                                .append(Component.literal(structureId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" включена"), true);
+
+                return 1;
+        }
+
+        private static int disableStructure(CommandContext<CommandSourceStack> context) {
+                ResourceLocation structureId = ResourceLocationArgument.getId(context, "structure");
+                MobConfig.StructureSettings settings = MobEditorMod.getConfig()
+                                .getStructureSettings(structureId.toString());
+
+                if (settings == null) {
+                        settings = new MobConfig.StructureSettings();
+                }
+                settings.setEnabled(false);
+                MobEditorMod.getConfig().setStructureSettings(structureId.toString(), settings);
+
+                context.getSource().sendSuccess(() -> Component.literal("Структура ")
+                                .append(Component.literal(structureId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" отключена"), true);
+
+                return 1;
+        }
+
+        private static int setStructureChance(CommandContext<CommandSourceStack> context) {
+                ResourceLocation structureId = ResourceLocationArgument.getId(context, "structure");
+                double chance = DoubleArgumentType.getDouble(context, "chance");
+
+                MobConfig.StructureSettings settings = MobEditorMod.getConfig()
+                                .getStructureSettings(structureId.toString());
+                if (settings == null) {
+                        settings = new MobConfig.StructureSettings();
+                }
+                settings.setSpawnChance(chance);
+                MobEditorMod.getConfig().setStructureSettings(structureId.toString(), settings);
+
+                context.getSource().sendSuccess(() -> Component.literal("Шанс спавна структуры ")
+                                .append(Component.literal(structureId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" установлен: ")
+                                .append(Component.literal(String.format("%.1f%%", chance * 100))
+                                                .withStyle(ChatFormatting.YELLOW)),
+                                true);
+
+                return 1;
+        }
+
+        private static int setStructureMinDistance(CommandContext<CommandSourceStack> context) {
+                ResourceLocation structureId = ResourceLocationArgument.getId(context, "structure");
+                int minDistance = IntegerArgumentType.getInteger(context, "min");
+
+                MobConfig.StructureSettings settings = MobEditorMod.getConfig()
+                                .getStructureSettings(structureId.toString());
+                if (settings == null) {
+                        settings = new MobConfig.StructureSettings();
+                }
+                settings.setMinDistance(minDistance);
+                MobEditorMod.getConfig().setStructureSettings(structureId.toString(), settings);
+
+                context.getSource().sendSuccess(() -> Component.literal("Минимальное расстояние для структуры ")
+                                .append(Component.literal(structureId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" установлено: ")
+                                .append(Component.literal(String.valueOf(minDistance))
+                                                .withStyle(ChatFormatting.YELLOW))
+                                .append(" чанков"), true);
+
+                return 1;
+        }
+
+        private static int setStructureDistance(CommandContext<CommandSourceStack> context) {
+                ResourceLocation structureId = ResourceLocationArgument.getId(context, "structure");
+                int minDistance = IntegerArgumentType.getInteger(context, "min");
+                int maxDistance = IntegerArgumentType.getInteger(context, "max");
+
+                if (minDistance > maxDistance) {
+                        context.getSource().sendFailure(
+                                        Component.literal("Минимальное расстояние не может быть больше максимального"));
+                        return 0;
+                }
+
+                MobConfig.StructureSettings settings = MobEditorMod.getConfig()
+                                .getStructureSettings(structureId.toString());
+                if (settings == null) {
+                        settings = new MobConfig.StructureSettings();
+                }
+                settings.setMinDistance(minDistance);
+                settings.setMaxDistance(maxDistance);
+                MobEditorMod.getConfig().setStructureSettings(structureId.toString(), settings);
+
+                context.getSource().sendSuccess(() -> Component.literal("Расстояние для структуры ")
+                                .append(Component.literal(structureId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" установлено: ")
+                                .append(Component.literal(String.valueOf(minDistance))
+                                                .withStyle(ChatFormatting.YELLOW))
+                                .append("-")
+                                .append(Component.literal(String.valueOf(maxDistance))
+                                                .withStyle(ChatFormatting.YELLOW))
+                                .append(" чанков"), true);
+
+                return 1;
+        }
+
+        private static int setStructureSpacing(CommandContext<CommandSourceStack> context) {
+                ResourceLocation structureId = ResourceLocationArgument.getId(context, "structure");
+                int spacing = IntegerArgumentType.getInteger(context, "spacing");
+
+                MobConfig.StructureSettings settings = MobEditorMod.getConfig()
+                                .getStructureSettings(structureId.toString());
+                if (settings == null) {
+                        settings = new MobConfig.StructureSettings();
+                }
+                settings.setSpacing(spacing);
+                MobEditorMod.getConfig().setStructureSettings(structureId.toString(), settings);
+
+                context.getSource().sendSuccess(() -> Component.literal("Расстояние между структурами ")
+                                .append(Component.literal(structureId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" установлено: ")
+                                .append(Component.literal(String.valueOf(spacing))
+                                                .withStyle(ChatFormatting.YELLOW))
+                                .append(" чанков"), true);
+
+                return 1;
+        }
+
+        private static int setStructureSeparation(CommandContext<CommandSourceStack> context) {
+                ResourceLocation structureId = ResourceLocationArgument.getId(context, "structure");
+                int separation = IntegerArgumentType.getInteger(context, "separation");
+
+                MobConfig.StructureSettings settings = MobEditorMod.getConfig()
+                                .getStructureSettings(structureId.toString());
+                if (settings == null) {
+                        settings = new MobConfig.StructureSettings();
+                }
+                settings.setSeparation(separation);
+                MobEditorMod.getConfig().setStructureSettings(structureId.toString(), settings);
+
+                context.getSource().sendSuccess(() -> Component.literal("Разделение для структуры ")
+                                .append(Component.literal(structureId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" установлено: ")
+                                .append(Component.literal(String.valueOf(separation))
+                                                .withStyle(ChatFormatting.YELLOW))
+                                .append(" чанков"), true);
+
+                return 1;
+        }
+
+        private static int getStructureSettings(CommandContext<CommandSourceStack> context) {
+                ResourceLocation structureId = ResourceLocationArgument.getId(context, "structure");
+                MobConfig.StructureSettings settings = MobEditorMod.getConfig()
+                                .getStructureSettings(structureId.toString());
+
+                if (settings == null) {
+                        context.getSource().sendSuccess(() -> Component.literal("Настройки для структуры ")
+                                        .append(Component.literal(structureId.toString())
+                                                        .withStyle(ChatFormatting.GOLD))
+                                        .append(" не найдены (используются значения по умолчанию)"), false);
+                        return 0;
+                }
+
+                context.getSource()
+                                .sendSuccess(() -> Component.literal("=== Настройки структуры " + structureId + " ===")
+                                                .withStyle(ChatFormatting.AQUA), false);
+
+                context.getSource().sendSuccess(() -> Component.literal("Включена: ")
+                                .append(Component.literal(settings.isEnabled() ? "Да" : "Нет")
+                                                .withStyle(settings.isEnabled() ? ChatFormatting.GREEN
+                                                                : ChatFormatting.RED)),
+                                false);
+
+                context.getSource().sendSuccess(() -> Component.literal("Шанс спавна: ")
+                                .append(Component.literal(String.format("%.1f%%", settings.getSpawnChance() * 100))
+                                                .withStyle(ChatFormatting.YELLOW)),
+                                false);
+
+                if (settings.getMinDistance() > 0 || settings.getMaxDistance() < Integer.MAX_VALUE) {
+                        String distanceStr = settings.getMinDistance() + (settings.getMaxDistance() < Integer.MAX_VALUE
+                                        ? "-" + settings.getMaxDistance()
+                                        : "+");
+                        context.getSource().sendSuccess(() -> Component.literal("Расстояние: ")
+                                        .append(Component.literal(distanceStr).withStyle(ChatFormatting.YELLOW))
+                                        .append(" чанков"), false);
+                }
+
+                if (settings.getSpacing() > 0) {
+                        context.getSource().sendSuccess(() -> Component.literal("Расстояние между: ")
+                                        .append(Component.literal(String.valueOf(settings.getSpacing()))
+                                                        .withStyle(ChatFormatting.YELLOW))
+                                        .append(" чанков"), false);
+                }
+
+                if (settings.getSeparation() > 0) {
+                        context.getSource().sendSuccess(() -> Component.literal("Разделение: ")
+                                        .append(Component.literal(String.valueOf(settings.getSeparation()))
+                                                        .withStyle(ChatFormatting.YELLOW))
+                                        .append(" чанков"), false);
+                }
+
+                return 1;
+        }
+
+        private static int removeStructureSettings(CommandContext<CommandSourceStack> context) {
+                ResourceLocation structureId = ResourceLocationArgument.getId(context, "structure");
+                MobEditorMod.getConfig().removeStructureSettings(structureId.toString());
+
+                context.getSource().sendSuccess(() -> Component.literal("Настройки структуры ")
+                                .append(Component.literal(structureId.toString()).withStyle(ChatFormatting.GOLD))
+                                .append(" удалены (возвращены значения по умолчанию)"), true);
+
+                return 1;
+        }
+
+        private static int listAllStructureSettings(CommandContext<CommandSourceStack> context) {
+                Map<String, MobConfig.StructureSettings> settingsMap = MobEditorMod.getConfig()
+                                .getAllStructureSettings();
+
+                if (settingsMap.isEmpty()) {
+                        context.getSource().sendSuccess(() -> Component.literal("Нет настроек структур")
+                                        .withStyle(ChatFormatting.YELLOW), false);
+                        return 0;
+                }
+
+                context.getSource().sendSuccess(() -> Component.literal("=== Все настроенные структуры ===")
+                                .withStyle(ChatFormatting.AQUA), false);
+
+                for (Map.Entry<String, MobConfig.StructureSettings> entry : settingsMap.entrySet()) {
+                        MobConfig.StructureSettings settings = entry.getValue();
+                        String status = settings.isEnabled() ? "✓" : "✗";
+                        ChatFormatting statusColor = settings.isEnabled() ? ChatFormatting.GREEN : ChatFormatting.RED;
+                        context.getSource().sendSuccess(() -> Component.literal("• ")
+                                        .append(Component.literal(status).withStyle(statusColor))
+                                        .append(" ")
+                                        .append(Component.literal(entry.getKey()).withStyle(ChatFormatting.GOLD))
+                                        .append(" - ")
+                                        .append(Component
+                                                        .literal(String.format("%.0f%%",
+                                                                        settings.getSpawnChance() * 100))
+                                                        .withStyle(ChatFormatting.YELLOW)),
+                                        false);
+                }
 
                 return 1;
         }
